@@ -1,0 +1,7 @@
+version: "3.4"
+services:
+  centos7bindbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: aursu/bindbuild:7-base
