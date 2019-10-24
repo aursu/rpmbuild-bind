@@ -1,8 +1,8 @@
-diff --git a/configure.in b/configure.in
-index e6cd6a4..988b0a7 100644
---- a/configure.in
-+++ b/configure.in
-@@ -5116,6 +5116,8 @@ AC_SUBST(BUILD_CPPFLAGS)
+diff --git a/configure.ac b/configure.ac
+index c1bfd62..7c5ad51 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -5333,6 +5333,8 @@ AC_SUBST(BUILD_CPPFLAGS)
  AC_SUBST(BUILD_LDFLAGS)
  AC_SUBST(BUILD_LIBS)
  
@@ -12,10 +12,10 @@ index e6cd6a4..988b0a7 100644
  # Commands to run at the end of config.status.
  # Don't just put these into configure, it won't work right if somebody
 diff --git a/isc-config.sh.in b/isc-config.sh.in
-index 110191a..5a64004 100644
+index b5e94ed..d2857e0 100644
 --- a/isc-config.sh.in
 +++ b/isc-config.sh.in
-@@ -12,16 +12,17 @@ prefix=@prefix@
+@@ -13,16 +13,17 @@ prefix=@prefix@
  exec_prefix=@exec_prefix@
  exec_prefix_set=
  includedir=@includedir@

@@ -1,4 +1,4 @@
-From e462d022a9dc52c40aece6f8ba3123ff3ffa59ed Mon Sep 17 00:00:00 2001
+From 8ca95f47231822df2b9c171a4da1e93ca5b748eb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Petr=20Men=C5=A1=C3=ADk?= <pemensik@redhat.com>
 Date: Wed, 25 Jul 2018 12:24:16 +0200
 Subject: [PATCH] Use make automatic variables to install updated manuals
@@ -19,7 +19,7 @@ Install all files in single command instead of iterating on each of them.
  9 files changed, 54 insertions(+), 38 deletions(-)
 
 diff --git a/bin/check/Makefile.in b/bin/check/Makefile.in
-index 12f48d2d23..d8eac4c714 100644
+index c124e80..1174f8d 100644
 --- a/bin/check/Makefile.in
 +++ b/bin/check/Makefile.in
 @@ -83,12 +83,14 @@ installdirs:
@@ -35,13 +35,13 @@ index 12f48d2d23..d8eac4c714 100644
  	${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} named-checkconf@EXEEXT@ ${DESTDIR}${sbindir}
  	${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} named-checkzone@EXEEXT@ ${DESTDIR}${sbindir}
  	(cd ${DESTDIR}${sbindir}; rm -f named-compilezone@EXEEXT@; ${LINK_PROGRAM} named-checkzone@EXEEXT@ named-compilezone@EXEEXT@)
--	for m in ${MANPAGES}; do ${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man8; done
+-	for m in ${MANPAGES}; do ${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man8 || exit 1; done
 -	(cd ${DESTDIR}${mandir}/man8; rm -f named-compilezone.8; ${LINK_PROGRAM} named-checkzone.8 named-compilezone.8)
  
  uninstall::
  	rm -f ${DESTDIR}${mandir}/man8/named-compilezone.8
 diff --git a/bin/confgen/Makefile.in b/bin/confgen/Makefile.in
-index 87f13dda4b..7865c0c73e 100644
+index 87f13dd..7865c0c 100644
 --- a/bin/confgen/Makefile.in
 +++ b/bin/confgen/Makefile.in
 @@ -95,13 +95,14 @@ installdirs:
@@ -64,7 +64,7 @@ index 87f13dda4b..7865c0c73e 100644
  uninstall::
  	rm -f ${DESTDIR}${mandir}/man8/tsig-keygen.8
 diff --git a/bin/delv/Makefile.in b/bin/delv/Makefile.in
-index e2d2802262..19361a83ea 100644
+index e2d2802..19361a8 100644
 --- a/bin/delv/Makefile.in
 +++ b/bin/delv/Makefile.in
 @@ -63,10 +63,12 @@ installdirs:
@@ -83,7 +83,7 @@ index e2d2802262..19361a83ea 100644
  uninstall::
  	rm -f ${DESTDIR}${mandir}/man1/delv.1
 diff --git a/bin/dig/Makefile.in b/bin/dig/Makefile.in
-index 773ac46395..3edd951e7e 100644
+index a9830a9..d7ac0b6 100644
 --- a/bin/dig/Makefile.in
 +++ b/bin/dig/Makefile.in
 @@ -91,16 +91,16 @@ installdirs:
@@ -102,13 +102,13 @@ index 773ac46395..3edd951e7e 100644
  	${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} \
  		nslookup@EXEEXT@ ${DESTDIR}${bindir}
 -	for m in ${MANPAGES}; do \
--		${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man1; \
--		done
+-		${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man1 || exit 1; \
+-	done
  
  uninstall::
  	for m in ${MANPAGES}; do \
 diff --git a/bin/dnssec/Makefile.in b/bin/dnssec/Makefile.in
-index 1be1d5ffc6..1d0c4ce5c1 100644
+index 2239ad1..ce0a177 100644
 --- a/bin/dnssec/Makefile.in
 +++ b/bin/dnssec/Makefile.in
 @@ -110,9 +110,11 @@ installdirs:
@@ -120,16 +120,16 @@ index 1be1d5ffc6..1d0c4ce5c1 100644
 +	${INSTALL_DATA} $^ ${DESTDIR}${mandir}/man8
 +
 +install:: ${TARGETS} installdirs install-man8
- 	for t in ${TARGETS}; do ${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} $$t ${DESTDIR}${sbindir}; done
--	for m in ${MANPAGES}; do ${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man8; done
+ 	for t in ${TARGETS}; do ${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} $$t ${DESTDIR}${sbindir} || exit 1; done
+-	for m in ${MANPAGES}; do ${INSTALL_DATA} ${srcdir}/$$m ${DESTDIR}${mandir}/man8 || exit 1; done
  
  uninstall::
- 	for m in ${MANPAGES}; do rm -f ${DESTDIR}${mandir}/man8/$$m ; done
+ 	for m in ${MANPAGES}; do rm -f ${DESTDIR}${mandir}/man8/$$m || exit 1; done
 diff --git a/bin/named/Makefile.in b/bin/named/Makefile.in
-index 1c413973d0..03e4cb849b 100644
+index e1f85a9..d92bc9a 100644
 --- a/bin/named/Makefile.in
 +++ b/bin/named/Makefile.in
-@@ -172,12 +172,17 @@ installdirs:
+@@ -176,12 +176,17 @@ installdirs:
  	$(SHELL) ${top_srcdir}/mkinstalldirs ${DESTDIR}${mandir}/man5
  	$(SHELL) ${top_srcdir}/mkinstalldirs ${DESTDIR}${mandir}/man8
  
@@ -152,7 +152,7 @@ index 1c413973d0..03e4cb849b 100644
  uninstall::
  	rm -f ${DESTDIR}${mandir}/man5/named.conf.5
 diff --git a/bin/pkcs11/Makefile.in b/bin/pkcs11/Makefile.in
-index ae9061626c..a058c91214 100644
+index ae90616..a058c91 100644
 --- a/bin/pkcs11/Makefile.in
 +++ b/bin/pkcs11/Makefile.in
 @@ -71,7 +71,10 @@ installdirs:
@@ -179,7 +179,7 @@ index ae9061626c..a058c91214 100644
  uninstall::
  	rm -f ${DESTDIR}${mandir}/man8/pkcs11-tokens.8
 diff --git a/bin/python/Makefile.in b/bin/python/Makefile.in
-index aa678d47ab..064c404e2f 100644
+index aa678d4..064c404 100644
 --- a/bin/python/Makefile.in
 +++ b/bin/python/Makefile.in
 @@ -47,13 +47,13 @@ installdirs:
@@ -201,7 +201,7 @@ index aa678d47ab..064c404e2f 100644
  		if test -n "${DESTDIR}" ; then \
  			${PYTHON} ${srcdir}/setup.py install --root=${DESTDIR} --prefix=${prefix} @PYTHON_INSTALL_LIB@ ; \
 diff --git a/bin/tools/Makefile.in b/bin/tools/Makefile.in
-index 7bf2af4cea..c395bc7462 100644
+index 7bf2af4..c395bc7 100644
 --- a/bin/tools/Makefile.in
 +++ b/bin/tools/Makefile.in
 @@ -119,17 +119,27 @@ installdirs:

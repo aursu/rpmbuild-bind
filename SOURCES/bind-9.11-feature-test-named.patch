@@ -1,0 +1,58 @@
+From d394129acaa40ec7fc68ab27802f0a01fcd50f3d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20Men=C5=A1=C3=ADk?= <pemensik@redhat.com>
+Date: Wed, 30 Jan 2019 14:37:17 +0100
+Subject: [PATCH] Create feature-test in source directory
+
+Feature-test tool is used in system tests to test compiled in changes.
+Because we build more variants of named with different configuration,
+compile feature-test for each of them this way.
+---
+ bin/named/Makefile.in       | 11 ++++++++++-
+ bin/tests/system/conf.sh.in |  2 +-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/bin/named/Makefile.in b/bin/named/Makefile.in
+index 3166368..df1f7ee 100644
+--- a/bin/named/Makefile.in
++++ b/bin/named/Makefile.in
+@@ -80,7 +80,7 @@ NOSYMLIBS =	${LWRESLIBS} ${DNSLIBS} ${BIND9LIBS} \
+ 
+ SUBDIRS =	unix
+ 
+-TARGETS =	named@EXEEXT@ lwresd@EXEEXT@
++TARGETS =	named@EXEEXT@ lwresd@EXEEXT@ feature-test@EXEEXT@
+ 
+ GEOIPLINKOBJS = geoip.@O@
+ GEOIP2LINKOBJS = geoip.@O@
+@@ -163,6 +163,15 @@ lwresd@EXEEXT@: named@EXEEXT@
+ 	rm -f lwresd@EXEEXT@
+ 	@LN@ named@EXEEXT@ lwresd@EXEEXT@
+ 
++# Bit of hack, do not produce intermediate .o object for featuretest
++feature-test.@O@: ${top_srcdir}/bin/tests/system/feature-test.c
++	${LIBTOOL_MODE_COMPILE} ${CC} ${ALL_CFLAGS} \
++		-c ${top_srcdir}/bin/tests/system/feature-test.c
++
++feature-test@EXEEXT@: feature-test.@O@
++	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} \
++		-o $@ feature-test.@O@ ${ISCLIBS} ${LIBS}
++
+ doc man:: ${MANOBJS}
+ 
+ docclean manclean maintainer-clean::
+diff --git a/bin/tests/system/conf.sh.in b/bin/tests/system/conf.sh.in
+index 65c0c5a..117d6ec 100644
+--- a/bin/tests/system/conf.sh.in
++++ b/bin/tests/system/conf.sh.in
+@@ -71,7 +71,7 @@ DNSTAPREAD=$TOP/bin/tools/dnstap-read
+ MDIG=$TOP/bin/tools/mdig
+ NZD2NZF=$TOP/bin/tools/named-nzd2nzf
+ FSTRM_CAPTURE=@FSTRM_CAPTURE@
+-FEATURETEST=$TOP/bin/tests/system/feature-test
++FEATURETEST=$TOP/bin/named/feature-test
+ 
+ RANDFILE=$TOP/bin/tests/system/random.data
+ 
+-- 
+2.20.1
+

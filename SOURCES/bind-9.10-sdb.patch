@@ -14,7 +14,7 @@ index ce7a2da..4e6a824 100644
  
  @BIND9_MAKE_RULES@
 diff --git a/bin/named-sdb/Makefile.in b/bin/named-sdb/Makefile.in
-index 6d2bfd1..d3f42e8 100644
+index 9660965..184fbb2 100644
 --- a/bin/named-sdb/Makefile.in
 +++ b/bin/named-sdb/Makefile.in
 @@ -30,10 +30,10 @@ VERSION=@BIND9_VERSION@
@@ -31,16 +31,16 @@ index 6d2bfd1..d3f42e8 100644
  
  DLZ_DRIVER_DIR =	${top_srcdir}/contrib/dlz/drivers
  
-@@ -79,7 +79,7 @@ NOSYMLIBS =	${LWRESLIBS} ${DNSLIBS} ${BIND9LIBS} \
+@@ -80,7 +80,7 @@ NOSYMLIBS =	${LWRESLIBS} ${DNSLIBS} ${BIND9LIBS} \
  
  SUBDIRS =	unix
  
--TARGETS =	named@EXEEXT@ lwresd@EXEEXT@
-+TARGETS =	named-sdb@EXEEXT@
+-TARGETS =	named@EXEEXT@ lwresd@EXEEXT@ feature-test@EXEEXT@
++TARGETS =	named-sdb@EXEEXT@ feature-test-sdb@EXEEXT@
  
  GEOIPLINKOBJS = geoip.@O@
- 
-@@ -146,7 +146,7 @@ server.@O@: server.c
+ GEOIP2LINKOBJS = geoip.@O@
+@@ -154,7 +154,7 @@ server.@O@: server.c
  		-DPRODUCT=\"${PRODUCT}\" \
  		-DVERSION=\"${VERSION}\" -c ${srcdir}/server.c
  
@@ -49,7 +49,16 @@ index 6d2bfd1..d3f42e8 100644
  	export MAKE_SYMTABLE="yes"; \
  	export BASEOBJS="${OBJS} ${UOBJS}"; \
  	${FINALBUILDCMD}
-@@ -173,8 +173,6 @@ statschannel.@O@: bind9.xsl.h
+@@ -168,7 +168,7 @@ feature-test.@O@: ${top_srcdir}/bin/tests/system/feature-test.c
+ 	${LIBTOOL_MODE_COMPILE} ${CC} ${ALL_CFLAGS} \
+ 		-c ${top_srcdir}/bin/tests/system/feature-test.c
+ 
+-feature-test@EXEEXT@: feature-test.@O@
++feature-test-sdb@EXEEXT@: feature-test.@O@
+ 	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} \
+ 		-o $@ feature-test.@O@ ${ISCLIBS} ${LIBS}
+ 
+@@ -190,8 +190,6 @@ statschannel.@O@: bind9.xsl.h
  
  installdirs:
  	$(SHELL) ${top_srcdir}/mkinstalldirs ${DESTDIR}${sbindir}
@@ -58,7 +67,7 @@ index 6d2bfd1..d3f42e8 100644
  
  install-man5: named.conf.5
  	${INSTALL_DATA} $^ ${DESTDIR}${mandir}/man5
-@@ -184,16 +182,11 @@ install-man8: named.8 lwresd.8
+@@ -201,16 +199,11 @@ install-man8: named.8 lwresd.8
  
  install-man: install-man5 install-man8
  
@@ -79,10 +88,10 @@ index 6d2bfd1..d3f42e8 100644
  @DLZ_DRIVER_RULES@
  
 diff --git a/bin/named-sdb/main.c b/bin/named-sdb/main.c
-index bb639d9..555c4d9 100644
+index 108b8d6..a943421 100644
 --- a/bin/named-sdb/main.c
 +++ b/bin/named-sdb/main.c
-@@ -91,6 +91,10 @@
+@@ -93,6 +93,10 @@
   * Include header files for database drivers here.
   */
  /* #include "xxdb.h" */
@@ -93,7 +102,7 @@ index bb639d9..555c4d9 100644
  
  #ifdef CONTRIB_DLZ
  /*
-@@ -1061,6 +1065,11 @@ setup(void) {
+@@ -1069,6 +1073,11 @@ setup(void) {
  		ns_main_earlyfatal("isc_app_start() failed: %s",
  				   isc_result_totext(result));
  
@@ -105,7 +114,7 @@ index bb639d9..555c4d9 100644
  	isc_log_write(ns_g_lctx, NS_LOGCATEGORY_GENERAL, NS_LOGMODULE_MAIN,
  		      ISC_LOG_NOTICE, "starting %s %s%s%s <id:%s>",
  		      ns_g_product, ns_g_version,
-@@ -1261,6 +1270,75 @@ setup(void) {
+@@ -1269,6 +1278,75 @@ setup(void) {
  				   isc_result_totext(result));
  #endif
  
@@ -181,7 +190,7 @@ index bb639d9..555c4d9 100644
  	ns_server_create(ns_g_mctx, &ns_g_server);
  
  #ifdef HAVE_LIBSECCOMP
-@@ -1303,6 +1381,11 @@ cleanup(void) {
+@@ -1311,6 +1389,11 @@ cleanup(void) {
  
  	dns_name_destroy();
  
@@ -194,22 +203,23 @@ index bb639d9..555c4d9 100644
  		      ISC_LOG_NOTICE, "exiting");
  	ns_log_shutdown();
 diff --git a/bin/named/Makefile.in b/bin/named/Makefile.in
-index 6d2bfd1..86f8587 100644
+index 9660965..03f7c05 100644
 --- a/bin/named/Makefile.in
 +++ b/bin/named/Makefile.in
-@@ -45,9 +45,9 @@ DLZDRIVER_LIBS =	@DLZ_DRIVER_LIBS@
+@@ -45,10 +45,10 @@ DLZDRIVER_LIBS =	@DLZ_DRIVER_LIBS@
  CINCLUDES =	-I${srcdir}/include -I${srcdir}/unix/include -I. \
  		${LWRES_INCLUDES} ${DNS_INCLUDES} ${BIND9_INCLUDES} \
  		${ISCCFG_INCLUDES} ${ISCCC_INCLUDES} ${ISC_INCLUDES} \
--		${DLZDRIVER_INCLUDES} ${DBDRIVER_INCLUDES} @DST_OPENSSL_INC@
-+		@DST_OPENSSL_INC@
+-		${DLZDRIVER_INCLUDES} ${DBDRIVER_INCLUDES} ${MAXMINDDB_CFLAGS} \
++		${MAXMINDDB_CFLAGS} \
+ 		@DST_OPENSSL_INC@
  
 -CDEFINES =      @CONTRIB_DLZ@ @CRYPTO@
 +CDEFINES =      @CRYPTO@
  
  CWARNINGS =
  
-@@ -71,11 +71,11 @@ DEPLIBS =	${LWRESDEPLIBS} ${DNSDEPLIBS} ${BIND9DEPLIBS} \
+@@ -72,11 +72,11 @@ DEPLIBS =	${LWRESDEPLIBS} ${DNSDEPLIBS} ${BIND9DEPLIBS} \
  
  LIBS =		${LWRESLIBS} ${DNSLIBS} ${BIND9LIBS} \
  		${ISCCFGLIBS} ${ISCCCLIBS} ${ISCLIBS} \
@@ -223,7 +233,7 @@ index 6d2bfd1..86f8587 100644
  
  SUBDIRS =	unix
  
-@@ -90,8 +90,7 @@ OBJS =		builtin.@O@ client.@O@ config.@O@ control.@O@ \
+@@ -94,8 +94,7 @@ OBJS =		builtin.@O@ client.@O@ config.@O@ control.@O@ \
  		tkeyconf.@O@ tsigconf.@O@ update.@O@ xfrout.@O@ \
  		zoneconf.@O@ \
  		lwaddr.@O@ lwresd.@O@ lwdclient.@O@ lwderror.@O@ lwdgabn.@O@ \
@@ -233,7 +243,7 @@ index 6d2bfd1..86f8587 100644
  
  UOBJS =		unix/os.@O@ unix/dlz_dlopen_driver.@O@
  
-@@ -106,8 +105,7 @@ SRCS =		builtin.c client.c config.c control.c \
+@@ -113,8 +112,7 @@ SRCS =		builtin.c client.c config.c control.c \
  		tkeyconf.c tsigconf.c update.c xfrout.c \
  		zoneconf.c \
  		lwaddr.c lwresd.c lwdclient.c lwderror.c lwdgabn.c \
@@ -243,7 +253,7 @@ index 6d2bfd1..86f8587 100644
  
  MANPAGES =	named.8 lwresd.8 named.conf.5
  
-@@ -195,7 +193,5 @@ uninstall::
+@@ -212,7 +210,5 @@ uninstall::
  	rm -f ${DESTDIR}${sbindir}/lwresd@EXEEXT@
  	${LIBTOOL_MODE_UNINSTALL} rm -f ${DESTDIR}${sbindir}/named@EXEEXT@
  
@@ -286,11 +296,11 @@ index c7e0868..95ab742 100644
  	${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} zonetodb@EXEEXT@  ${DESTDIR}${sbindir}
 +	${LIBTOOL_MODE_INSTALL} ${INSTALL_PROGRAM} zone2sqlite@EXEEXT@ ${DESTDIR}${sbindir}
  	${INSTALL_DATA} ${srcdir}/zone2ldap.1 ${DESTDIR}${mandir}/man1/zone2ldap.1
-diff --git a/configure.in b/configure.in
-index 62536a6..f571a4f 100644
---- a/configure.in
-+++ b/configure.in
-@@ -5445,6 +5445,8 @@ AC_CONFIG_FILES([
+diff --git a/configure.ac b/configure.ac
+index d8147ae..930cd1c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -5532,6 +5532,8 @@ AC_CONFIG_FILES([
  	bin/named/unix/Makefile
  	bin/named-pkcs11/Makefile
  	bin/named-pkcs11/unix/Makefile
@@ -299,7 +309,7 @@ index 62536a6..f571a4f 100644
  	bin/nsupdate/Makefile
  	bin/pkcs11/Makefile
  	bin/python/Makefile
-@@ -5469,6 +5471,7 @@ AC_CONFIG_FILES([
+@@ -5556,6 +5558,7 @@ AC_CONFIG_FILES([
  	bin/python/isc/tests/dnskey_test.py
  	bin/python/isc/tests/policy_test.py
  	bin/rndc/Makefile

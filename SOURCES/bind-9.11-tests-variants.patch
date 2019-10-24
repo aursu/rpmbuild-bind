@@ -1,0 +1,65 @@
+From 06a22ff20ac3d68fa1f995c91068b43392425e43 Mon Sep 17 00:00:00 2001
+From: Petr Mensik <pemensik@redhat.com>
+Date: Fri, 1 Mar 2019 15:48:20 +0100
+Subject: [PATCH] Make alternative named builds testable in system tests
+
+Red Hat has alternative variant builds of named, which are not ever
+tested by system tests. New variables make it relatively easy to test
+alternative variants.
+
+For sdb variant use:
+export NAMED_VARIANT=-sdb DNSSEC_VARIANT=
+
+For pkcs variant use:
+export NAMED_VARIANT=-pkcs11 DNSSEC_VARIANT=-pkcs11
+---
+ bin/tests/system/conf.sh.in | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/bin/tests/system/conf.sh.in b/bin/tests/system/conf.sh.in
+index 4b0fe39..f135af6 100644
+--- a/bin/tests/system/conf.sh.in
++++ b/bin/tests/system/conf.sh.in
+@@ -34,7 +34,7 @@ DISABLED_ALGORITHM=ECDSAP384SHA384
+ DISABLED_ALGORITHM_NUMBER=14
+ DISABLED_BITS=384
+ 
+-NAMED=$TOP/bin/named/named
++NAMED=$TOP/bin/named${NAMED_VARIANT}/named${NAMED_VARIANT}
+ # We must use "named -l" instead of "lwresd" because argv[0] is lost
+ # if the program is libtoolized.
+ LWRESD="$TOP/bin/named/named -l"
+@@ -45,13 +45,14 @@ NSUPDATE=$TOP/bin/nsupdate/nsupdate
+ DDNSCONFGEN=$TOP/bin/confgen/ddns-confgen
+ TSIGKEYGEN=$TOP/bin/confgen/tsig-keygen
+ RNDCCONFGEN=$TOP/bin/confgen/rndc-confgen
+-KEYGEN=$TOP/bin/dnssec/dnssec-keygen
+-KEYFRLAB=$TOP/bin/dnssec/dnssec-keyfromlabel
+-SIGNER=$TOP/bin/dnssec/dnssec-signzone
+-REVOKE=$TOP/bin/dnssec/dnssec-revoke
+-SETTIME=$TOP/bin/dnssec/dnssec-settime
+-DSFROMKEY=$TOP/bin/dnssec/dnssec-dsfromkey
+-IMPORTKEY=$TOP/bin/dnssec/dnssec-importkey
++KEYGEN=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-keygen${DNSSEC_VARIANT}
++KEYFRLAB=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-keyfromlabel${DNSSEC_VARIANT}
++SIGNER=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-signzone${DNSSEC_VARIANT}
++REVOKE=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-revoke${DNSSEC_VARIANT}
++SETTIME=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-settime${DNSSEC_VARIANT}
++DSFROMKEY=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-dsfromkey${DNSSEC_VARIANT}
++IMPORTKEY=$TOP/bin/dnssec${DNSSEC_VARIANT}/dnssec-importkey${DNSSEC_VARIANT}
++CHECKDS=$TOP/bin/python/dnssec-checkds
+ CHECKDS=$TOP/bin/python/dnssec-checkds
+ COVERAGE=$TOP/bin/python/dnssec-coverage
+ KEYMGR=$TOP/bin/python/dnssec-keymgr
+@@ -71,7 +72,7 @@ DNSTAPREAD=$TOP/bin/tools/dnstap-read
+ MDIG=$TOP/bin/tools/mdig
+ NZD2NZF=$TOP/bin/tools/named-nzd2nzf
+ FSTRM_CAPTURE=@FSTRM_CAPTURE@
+-FEATURETEST=$TOP/bin/named/feature-test
++FEATURETEST=$TOP/bin/named${NAMED_VARIANT}/feature-test${NAMED_VARIANT}
+ 
+ RANDFILE=$TOP/bin/tests/system/random.data
+ 
+-- 
+2.20.1
+

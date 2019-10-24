@@ -2,13 +2,12 @@
 # Red Hat BIND package .spec file
 #
 
-%global PATCHVER P2
+#%%global PATCHVER P1
 #%%global PREVER rc1
 %global BINDVERSION %{version}%{?PREVER}%{?PATCHVER:-%{PATCHVER}}
 
 # bcond_without is built by default, unless --without X is passed
 # bcond_with is built only when --with X is passed to build
-%bcond_without UNITTEST
 %bcond_with    SYSTEMTEST
 %bcond_without SDB
 %bcond_without GSSTSIG
@@ -17,14 +16,14 @@
 %bcond_without PKCS11
 %bcond_without DEVEL
 %bcond_with    LMDB
+%bcond_with    JSON
+%bcond_with    DNSTAP
 %bcond_with    DLZ
 %bcond_without EXPORT_LIBS
-%if 0%{?fedora} >= 17
-%bcond_without KYUA
-%bcond_without GEOIP
+%if 0%{?fedora} >= 28
+%bcond_without UNITTEST
 %else
-%bcond_with    KYUA
-%bcond_with    GEOIP
+%bcond_with    UNITTEST
 %endif
 
 %{?!bind_uid:  %global bind_uid  25}
@@ -44,28 +43,29 @@
 #
 
 # lib*.so.X versions of selected libraries
-%global sover_dns 1102
-%global sover_isc 169
-%global sover_irs 160
-%global sover_isccfg 160
+%global sover_dns 1107
+%global sover_isc 1100
+%global sover_irs 161
+%global sover_isccfg 163
 
 Summary:  The Berkeley Internet Name Domain (BIND) DNS (Domain Name System) server
 Name:     bind
 License:  MPLv2.0
-Version:  9.11.4
-Release:  14%{?PATCHVER:.%{PATCHVER}}%{?PREVER:.%{PREVER}}%{?dist}
+Version:  9.11.10
+Release:  1%{?PATCHVER:.%{PATCHVER}}%{?PREVER:.%{PREVER}}%{?dist}
 Epoch:    32
-Url:      http://www.isc.org/products/BIND/
+Url:      https://www.isc.org/downloads/bind/
 #
 Source:   https://ftp.isc.org/isc/bind9/%{BINDVERSION}/bind-%{BINDVERSION}.tar.gz
 Source1:  named.sysconfig
+Source2:  https://ftp.isc.org/isc/bind9/%{BINDVERSION}/bind-%{BINDVERSION}.tar.gz.asc
 Source3:  named.logrotate
 Source7:  bind-9.3.1rc1-sdb_tools-Makefile.in
 Source8:  dnszone.schema
 Source12: README.sdb_pgsql
 Source25: named.conf.sample
 Source26: named.conf
-Source28: config-18.tar.bz2
+Source28: config-19.tar.bz2
 Source30: ldap2zone.c
 Source31: ldap2zone.1
 Source32: named-sdb.8
@@ -110,16 +110,38 @@ Patch140:bind-9.11-rh1410433.patch
 Patch145:bind-9.11-rh1205168.patch
 # [ISC-Bugs #46853] commit cb616c6d5c2ece1fac37fa6e0bca2b53d4043098 ISC 4851
 Patch149:bind-9.11-kyua-pkcs11.patch
+# Avoid conflicts with OpenSSL PKCS11 engine
+Patch150:bind-9.11-engine-pkcs11.patch
 Patch153:bind-9.11-export-suffix.patch
 Patch154:bind-9.11-oot-manual.patch
 Patch155:bind-9.11-pk11.patch
 Patch156:bind-9.11-fips-code.patch
 Patch157:bind-9.11-fips-tests.patch
+# [RT #31459] commit 06a8051d2476fb526fe6960832209392c763a9af
+Patch158:bind-9.11-rt31459.patch
+# [RT #46047] commit 24172bd2eeba91441ab1c65d2717b0692309244a ISC 4724
+Patch159:bind-9.11-rt46047.patch
 # commit 66ba2fdad583d962a1f4971c85d58381f0849e4d
 # commit b105ccee68ccc3c18e6ea530063b3c8e5a42571c
 # commit 083461d3329ff6f2410745848a926090586a9846
-Patch158:bind-9.11-rh1624100.patch
-Patch159:bind-9.11-host-idn-disable.patch
+Patch160:bind-9.11-rh1624100.patch
+# https://gitlab.isc.org/isc-projects/bind9/issues/555
+Patch161:bind-9.11-host-idn-disable.patch
+# https://gitlab.isc.org/isc-projects/bind9/commit/8a98277811e
+Patch163:bind-9.11-rh1663318.patch
+# https://gitlab.isc.org/isc-projects/bind9/issues/819
+Patch164:bind-9.11-rh1666814.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=1647829
+Patch165:bind-9.11-rh1647829.patch
+# random_test fails too often by random, disable it
+Patch168:bind-9.11-unit-disable-random.patch
+Patch170:bind-9.11-feature-test-named.patch
+Patch171:bind-9.11-tests-variants.patch
+Patch172:bind-9.11-tests-pkcs11.patch
+Patch173:bind-9.11-rh1732883.patch
+# Make sure jsonccp-devel does not interfere
+Patch174:bind-9.11-json-c.patch
+Patch175:bind-9.11-fips-disable.patch
 
 # SDB patches
 Patch11: bind-9.3.2b2-sdbsrc.patch
@@ -154,19 +176,14 @@ BuildRequires:  systemd
 BuildRequires:  python36-devel
 BuildRequires:  python36-ply
 BuildRequires:  findutils sed
-%if %{with GEOIP}
 BuildRequires:  GeoIP-devel
-%endif
 %if %{with SDB}
 BuildRequires:  openldap-devel, postgresql-devel, sqlite-devel, mariadb-devel
 BuildRequires:  libdb-devel
 %endif
-%if %{with KYUA}
+%if %{with UNITTEST}
 # make unit dependencies
-BuildRequires:  libatf-c-devel kyua
-%else
-# shipped atf library requires c++
-BuildRequires:  gcc-c++
+BuildRequires:  libcmocka-devel kyua
 %endif
 %if %{with PKCS11}
 BuildRequires:  softhsm
@@ -180,6 +197,12 @@ BuildRequires:  krb5-devel
 %endif
 %if %{with LMDB}
 BuildRequires:  lmdb-devel
+%endif
+%if %{with JSON}
+BuildRequires:  json-c-devel
+%endif
+%if %{with DNSTAP}
+BuildRequires:  fstrm-devel protobuf-c-devel
 %endif
 # Needed to regenerate dig.1 manpage
 BuildRequires: docbook-style-xsl, libxslt
@@ -206,7 +229,7 @@ For other supported HSM modules please check the BIND documentation.
 %package pkcs11-utils
 Summary: Bind tools with native PKCS#11 for using DNSSEC
 Requires: bind-pkcs11-libs%{?_isa} = %{epoch}:%{version}-%{release}
-Obsoletes: bind-pkcs11 < 32:9.9.4-16.P2 
+Obsoletes: bind-pkcs11 < 32:9.9.4-16.P2
 
 %description pkcs11-utils
 This is a set of PKCS#11 utilities that when used together create rsa
@@ -307,6 +330,18 @@ required for development with ISC BIND 9
 %package lite-devel
 Summary:  Lite version of header files and libraries needed for BIND DNS development
 Requires: bind-libs-lite%{?_isa} = %{epoch}:%{version}-%{release}
+%if %{with GSSTSIG}
+Requires: krb5-devel%{?_isa}
+%endif
+%if %{with LMDB}
+Requires: lmdb-devel
+%endif
+%if %{with JSON}
+Requires:  json-c-devel%{?_isa}
+%endif
+%if %{with DNSTAP}
+Requires:  fstrm-devel%{?_isa} protobuf-c-devel%{?_isa}
+%endif
 
 %description lite-devel
 The bind-lite-devel package contains lite version of the header
@@ -338,49 +373,48 @@ chroot(2) jail for the named-sdb(8) program from the BIND package.
 Based on the code from Jan "Yenya" Kasprzak <kas@fi.muni.cz>
 %endif
 
-
 %if %{with DLZ}
 %package dlz-bdb
 Summary: BIND server bdb DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-bdb
-Dynamic Loadable Zones module for BIND server.
+Dynamic Loadable Zones Berkeley DB module for BIND server.
 
 %package dlz-filesystem
 Summary: BIND server filesystem DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-filesystem
-Dynamic Loadable Zones module for BIND server.
+Dynamic Loadable Zones filesystem module for BIND server.
 
 %package dlz-ldap
 Summary: BIND server ldap DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-ldap
-Dynamic Loadable Zones module for BIND server.
+Dynamic Loadable Zones LDAP module for BIND server.
 
 %package dlz-mysql
 Summary: BIND server mysql DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-mysql
-Dynamic Loadable Zones module for BIND server.
+Dynamic Loadable Zones MySQL module for BIND server.
 
 %package dlz-mysqldyn
 Summary: BIND server mysqldyn DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-mysqldyn
-Dynamic Loadable Zones module for BIND server.
+BIND 9 DLZ MySQL module with support for dynamic DNS (DDNS)
 
 %package dlz-sqlite3
 Summary: BIND server sqlite3 DLZ module
 Requires: bind%{?_isa} = %{epoch}:%{version}-%{release}
 
 %description dlz-sqlite3
-Dynamic Loadable Zones module for BIND server.
+Dynamic Loadable Zones sqlite3 module for BIND server.
 %endif
 
 
@@ -434,11 +468,9 @@ are used for building ISC DHCP.
 # Common patches
 %patch10 -p1 -b .PIE
 %patch16 -p1 -b .redhat_doc
-%ifnarch alpha ia64
 %patch72 -p1 -b .64bit
-%endif
 %patch102 -p1 -b .rh452060
-%patch106 -p0 -b .rh490837
+%patch106 -p1 -b .rh490837
 %patch109 -p1 -b .rh478718
 %patch112 -p1 -b .rh645544
 %patch130 -p1 -b .libdb
@@ -450,8 +482,20 @@ are used for building ISC DHCP.
 %patch155 -p1 -b .pk11-internal
 %patch156 -p1 -b .fips-code
 %patch157 -p1 -b .fips-tests
-%patch158 -p1 -b .rh1624100
-%patch159 -p1 -b .host-idn-disable
+%patch158 -p1 -b .rt31459
+%patch159 -p1 -b .rt46047
+%patch160 -p1 -b .rh1624100
+%patch161 -p1 -b .host-idn-disable
+%patch163 -p1 -b .rh1663318
+%patch164 -p1 -b .rh1666814
+%patch165 -p1 -b .rh1647829
+%patch168 -p1 -b .random_test-disable
+%patch170 -p1 -b .featuretest-named
+%patch171 -p1 -b .test-variant
+%patch172 -p1 -b .test-pkcs11
+%patch173 -p1 -b .rh1732883
+%patch174 -p1 -b .json-c
+%patch175 -p1 -b .rh1709553
 
 %if %{with PKCS11}
 cp -r bin/named{,-pkcs11}
@@ -460,6 +504,7 @@ cp -r lib/isc{,-pkcs11}
 cp -r lib/dns{,-pkcs11}
 %patch136 -p1 -b .dist_pkcs11
 %patch149 -p1 -b .kyua-pkcs11
+%patch150 -p1 -b .engine-pkcs11
 %endif
 
 %if %{with SDB}
@@ -508,24 +553,15 @@ done
 
 # normal and pkcs11 unit tests
 %define unit_prepare_build() \
-  cp -uv Kyuafile Atffile "%{1}/" \
+  cp -uv Kyuafile "%{1}/" \
   find lib -name 'K*.key' -exec cp -uv '{}' "%{1}/{}" ';' \
   find lib -name 'Kyuafile' -exec cp -uv '{}' "%{1}/{}" ';' \
-  find lib -name 'Atffile' -exec cp -uv '{}' "%{1}/{}" ';' \
   find lib -name 'testdata' -type d -exec cp -Tav '{}' "%{1}/{}" ';' \
   find lib -name 'testkeys' -type d -exec cp -Tav '{}' "%{1}/{}" ';' \
 
 %define systemtest_prepare_build() \
   cp -Tuav bin/tests "%{1}/bin/tests/" \
   cp -uv version "%{1}" \
-
-%if %{with KYUA}
-# Use system installed libatf-c library with kyua tool
-ATF_PATH=/usr
-%else
-# Use bundled atf library with atf-run
-ATF_PATH=yes
-%endif
 
 export CFLAGS="$CFLAGS $RPM_OPT_FLAGS"
 export CPPFLAGS="$CPPFLAGS -DDIG_SIGCHASE"
@@ -538,6 +574,13 @@ version
 libtoolize -c -f; aclocal -I libtool.m4 --force; autoconf -f
 
 mkdir build
+
+%if %{with DLZ}
+# DLZ modules do not support oot builds. Copy files into build
+mkdir -p build/contrib/dlz
+cp -frp contrib/dlz/modules build/contrib/dlz/modules
+%endif
+
 pushd build
 LIBDIR_SUFFIX=
 export LIBDIR_SUFFIX
@@ -552,9 +595,7 @@ export LIBDIR_SUFFIX
   --disable-static \
   --includedir=%{_includedir}/bind9 \
   --with-tuning=large \
-%if %{with GEOIP}
   --with-geoip \
-%endif
   --with-libidn2 \
   --enable-openssl-hash \
 %if %{with PKCS11}
@@ -569,6 +610,9 @@ export LIBDIR_SUFFIX
   --with-dlz-filesystem=yes \
   --with-dlz-bdb=yes \
 %endif
+%if %{with DLZ}
+  --with-dlz-bdb=yes \
+%endif
 %if %{with GSSTSIG}
   --with-gssapi=yes \
   --disable-isc-spnego \
@@ -578,13 +622,28 @@ export LIBDIR_SUFFIX
 %else
   --with-lmdb=no \
 %endif
+%if %{with JSON}
+  --with-libjson \
+%endif
+%if %{with DNSTAP}
+  --enable-dnstap \
+%endif
 %if %{with UNITTEST}
-  --with-atf=${ATF_PATH} \
+  --with-cmocka \
 %endif
   --enable-fixed-rrset \
   --with-docbook-xsl=%{_datadir}/sgml/docbook/xsl-stylesheets \
   --enable-full-report \
 ;
+%if %{with DNSTAP}
+  pushd lib
+  SRCLIB="../../../lib"
+  (cd dns && ln -s ${SRCLIB}/dns/dnstap.proto)
+%if %{with PKCS11}
+  (cd dns-pkcs11 && ln -s ${SRCLIB}/dns-pkcs11/dnstap.proto)
+%endif
+  popd
+%endif
 make %{?_smp_mflags}
 
 ### FIXME hack!!!
@@ -601,16 +660,6 @@ popd
 pushd bin/python
 make man
 popd
-
-%if ! %{with KYUA}
-# Do not build atf again for export libs
-ATF_PATH="`pwd`/unit/atf"
-
-# Atf libs are built. Prevent their installation
-sed -i -e \
-'/^SUBDIRS =/s/atf-src//i' \
-unit/Makefile
-%endif
 
 %if %{with DLZ}
   pushd contrib/dlz
@@ -650,7 +699,7 @@ export LIBDIR_SUFFIX
         --disable-isc-spnego \
 %endif
 %if %{with UNITTEST}
-        --with-atf=${ATF_PATH} \
+        --with-cmocka \
 %endif
         --enable-fixed-rrset \
         --disable-rpz-nsip \
@@ -674,10 +723,6 @@ sed -i -e \
 "/^SUBDIRS =/s/.*/SUBDIRS = %{bind_export_libs}/i" \
 lib/Makefile
 
-sed -i -e \
-'/^SUBDIRS =/s/atf-src//i' \
-unit/Makefile
-
 for lib in %{bind_export_libs}
 do
         find .  -name Makefile -exec sed  "s/lib${lib}\./lib${lib}-export\./g" -i {} \;
@@ -691,11 +736,15 @@ popd
 
 # export library unit tests
 %unit_prepare_build export-libs
-# Do not try pkcs11 and lwres in export libs
-sed -e '/^\s*include(.*-pkcs11/ d' -e '/^\s*include(.*lwres/ d' \
-        -i export-libs/lib/Kyuafile
-sed -e '/^tp:.*-pkcs11/ d' -e '/^tp:\s*lwres/ d' \
-        -i export-libs/lib/Atffile
+# Test just compiled libraries
+for lib in %{bind_export_libs}
+do
+  sed -e "s,^\s*include(.*${lib}/.*,-- use &," \
+      -i export-libs/lib/Kyuafile
+done
+
+sed -e "/^\s*include(/ d" -e 's/^-- use //' \
+    -i export-libs/lib/Kyuafile
 
 ## End of export libs
 %endif
@@ -703,8 +752,7 @@ sed -e '/^tp:.*-pkcs11/ d' -e '/^tp:\s*lwres/ d' \
 %check
 %if %{with PKCS11}
   # Tests require initialization of pkcs11 token
-  export SOFTHSM2_CONF="`pwd`/softhsm2.conf"
-  sh %{SOURCE48} "${SOFTHSM2_CONF}" "`pwd`/softhsm-tokens"
+  eval "$(bash %{SOURCE48} -A "`pwd`/softhsm-tokens")"
 %endif
 
 %if %{with UNITTEST}
@@ -848,6 +896,7 @@ install -m 644 %{SOURCE12} contrib/sdb/pgsql/
 %endif
 
 %if %{with DLZ}
+  pushd build
   pushd contrib/dlz
   pushd bin/dlzbdb
   make DESTDIR=${RPM_BUILD_ROOT} install
@@ -857,6 +906,7 @@ install -m 644 %{SOURCE12} contrib/sdb/pgsql/
     make -C $DIR DESTDIR=${RPM_BUILD_ROOT} libdir=%{_libdir}/bind install
   done
   mv mysqldyn/testing/README mysqldyn/testing/README.testing
+  popd
   popd
   popd
 %endif
@@ -923,9 +973,9 @@ install -m 644 %{SOURCE25} sample/etc/named.conf
 install -m 644 %{SOURCE26} named.conf.default
 install -m 644 ${RPM_BUILD_ROOT}/etc/named.rfc1912.zones sample/etc/named.rfc1912.zones
 install -m 644 ${RPM_BUILD_ROOT}/var/named/{named.ca,named.localhost,named.loopback,named.empty}  sample/var/named
-for f in my.internal.zone.db slaves/my.slave.internal.zone.db slaves/my.ddns.internal.zone.db my.external.zone.db; do 
+for f in my.internal.zone.db slaves/my.slave.internal.zone.db slaves/my.ddns.internal.zone.db my.external.zone.db; do
   echo '@ in soa localhost. root 1 3H 15M 1W 1D
-  ns localhost.' > sample/var/named/$f; 
+  ns localhost.' > sample/var/named/$f;
 done
 :;
 
@@ -938,7 +988,7 @@ install -m 644 %{SOURCE43} ${RPM_BUILD_ROOT}%{_sysconfdir}/rwtab.d/named
 %pre
 if [ "$1" -eq 1 ]; then
   /usr/sbin/groupadd -g %{bind_gid} -f -r named >/dev/null 2>&1 || :;
-  /usr/sbin/useradd  -u %{bind_uid} -r -N -M -g named -s /bin/false -d /var/named -c Named named >/dev/null 2>&1 || :;
+  /usr/sbin/useradd  -u %{bind_uid} -r -N -M -g named -s /sbin/nologin -d /var/named -c Named named >/dev/null 2>&1 || :;
 fi;
 :;
 
@@ -952,8 +1002,8 @@ if [ "$1" -eq 1 ]; then
   [ -e /etc/rndc.key ] && chmod 0640 /etc/rndc.key
 else
   # Upgrade, use invalid shell
-  if getent passwd named | grep ':/sbin/nologin$' >/dev/null; then
-    usermod -s /bin/false named
+  if getent passwd named | grep ':/bin/false$' >/dev/null; then
+    /sbin/usermod -s /sbin/nologin named
   fi
   # Checkconf will parse out comments
   if /usr/sbin/named-checkconf -p /etc/named.conf 2>/dev/null | grep -q named.iscdlv.key
@@ -976,7 +1026,7 @@ fi
 
 %if %{with SDB}
 %post sdb
-# Initial installation 
+# Initial installation
 %systemd_post named-sdb.service
 
 %preun sdb
@@ -1082,7 +1132,7 @@ fi;
 :;
 
 %preun sdb-chroot
-%systemd_preun named-sdb-chroot.service 
+%systemd_preun named-sdb-chroot.service
 :;
 
 %postun sdb-chroot
@@ -1090,10 +1140,6 @@ fi;
 %systemd_postun_with_restart named-sdb-chroot.service
 
 %endif
-
-%clean
-rm -rf ${RPM_BUILD_ROOT}
-:;
 
 %files
 %{_libdir}/bind
@@ -1170,9 +1216,9 @@ rm -rf ${RPM_BUILD_ROOT}
 %endif
 
 %files libs
-%{_libdir}/libbind9.so.160*
-%{_libdir}/libisccc.so.160*
-%{_libdir}/liblwres.so.160*
+%{_libdir}/libbind9.so.161*
+%{_libdir}/libisccc.so.161*
+%{_libdir}/liblwres.so.161*
 
 %files libs-lite
 %{_libdir}/libdns.so.%{sover_dns}*
@@ -1204,6 +1250,10 @@ rm -rf ${RPM_BUILD_ROOT}
 %{_sbindir}/named-compilezone
 %if %{with LMDB}
 %{_sbindir}/named-nzd2nzf
+%endif
+%if %{with DNSTAP}
+%{_bindir}/dnstap-read
+%{_mandir}/man1/dnstap-read.1*
 %endif
 %{_mandir}/man1/host.1*
 %{_mandir}/man1/nsupdate.1*
@@ -1392,6 +1442,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{_sbindir}/dlzbdb
 %{_libdir}/bind/dlz_bdbhpt_dynamic.so
 %doc contrib/dlz/modules/bdbhpt/testing/*
+%doc contrib/dlz/modules/bdbhpt/README*
 
 %files dlz-filesystem
 %{_libdir}/bind/dlz_filesystem_dynamic.so
@@ -1403,7 +1454,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %files dlz-mysqldyn
 %{_libdir}/bind/dlz_mysqldyn_mod.so
 %doc contrib/dlz/modules/mysqldyn/testing/*
-%doc contrib/dlz/modules/mysqldyn/README
+%doc contrib/dlz/modules/mysqldyn/README*
 
 %files dlz-ldap
 %{_libdir}/bind/dlz_ldap_dynamic.so
@@ -1421,6 +1472,47 @@ rm -rf ${RPM_BUILD_ROOT}
 
 
 %changelog
+* Tue Aug 27 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.10-1
+- Update to 9.11.10
+
+* Fri Aug 09 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.9-3
+- Display errors from rndc reload (#1739441)
+
+* Thu Aug 08 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.9-2
+- Permit explicit disabling of RSAMD5 in FIPS mode (#1709553)
+
+* Wed Jul 24 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.9-1
+- Update to 9.11.9
+
+* Wed Jul 24 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.8-2
+- Use monotonic time in export library (#1732883)
+
+* Tue Jul 02 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.8-1
+- Update to 9.11.8
+
+* Mon May 06 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.6-2.P1
+- Fix error in scriptlet condition, also in postun script
+
+* Fri May 03 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.6-1.P1
+- Update to 9.11.6-P1 (#1702881)
+
+* Fri Feb 22 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.5-4.P4
+- Update to 9.11.5-P4
+
+* Thu Feb 21 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.5-3.P1
+- Disable autodetected eddsa algorithm ED448
+- Disable often failing unit test random_test
+
+* Sun Jan 27 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.5-2.P1
+- Update to 9.11.5-P1
+- dig prints ASCII name instead of failure (#1647829)
+- disable IDN output from scripts
+- Update project URL
+- Removed revoked KSK 19164 from trusted keys
+
+* Wed Oct 24 2018 Petr Menšík <pemensik@redhat.com> - 32:9.11.5-1
+- Update to 9.11.5
+
 * Mon Oct 15 2018 Petr Menšík <pemensik@redhat.com> - 32:9.11.4-14.P2
 - Rely on named_write_master_zones being default on (#1588592)
 
@@ -2709,7 +2801,7 @@ rm -rf ${RPM_BUILD_ROOT}
   obsoleted by upstream bind-9.5-_res_errno.patch
 
 * Wed Sep 05 2007 Adam Tkac <atkac redhat com> 32:9.5.0-11.9.a6
-- fixed wrong resolver's dispatch pool cleanup (#275011, patch from 
+- fixed wrong resolver's dispatch pool cleanup (#275011, patch from
   tmraz redhat com)
 
 * Wed Sep 05 2007 Adam Tkac <atkac redhat com> 32:9.5.0-11.3.a6
@@ -2937,21 +3029,21 @@ rm -rf ${RPM_BUILD_ROOT}
 - update to 9.3.3rc3, removed already merged patches
 
 * Fri Oct 13 2006 Martin Stransky <stransky@redhat.com> - 30:9.3.3-5
-- fix for #209359: bind-libs from compatlayer CD will not 
+- fix for #209359: bind-libs from compatlayer CD will not
   install on ia64
 
 * Tue Oct 10 2006 Martin Stransky <stransky@redhat.com> - 30:9.3.3-4
 - added fix for #210096: warning: group named does not exist - using root
 
 * Thu Oct  5 2006 Martin Stransky <stransky@redhat.com> - 30:9.3.3-3
-- added fix from #209400 - Bind Init Script does not create 
+- added fix from #209400 - Bind Init Script does not create
   the PID file always, created by Jeff Means
-- added timeout to stop section of init script. 
+- added timeout to stop section of init script.
   The default is 100 sec. and can be adjusted by NAMED_SHUTDOWN_TIMEOUT
   shell variable.
 
 * Mon Oct  2 2006 Martin Stransky <stransky@redhat.com> - 30:9.3.3-2
-- removed chcon from %%post script, replaced by restorecon 
+- removed chcon from %%post script, replaced by restorecon
   (Bug 202547, comment no. 37)
 
 * Fri Sep 15 2006 Martin Stransky <stransky@redhat.com> - 30:9.3.3-1
@@ -2987,7 +3079,7 @@ rm -rf ${RPM_BUILD_ROOT}
 - fix #195881, perms are not packaged correctly
 
 * Fri Jul 21 2006 Jason Vas Dias <jvdias@redhat.com> - 30:9.3.2-32
-- fix addenda to bug 189789: 
+- fix addenda to bug 189789:
   determination of selinux enabled was still not 100% correct in bind-chroot-admin
 - fix addenda to bug 196398:
   make named.init test for NetworkManager being enabled AFTER testing for -D absence;
@@ -3012,19 +3104,19 @@ rm -rf ${RPM_BUILD_ROOT}
 * Wed Jun 14 2006 Jason Vas Dias <jvdias@redhat.com> - 30:9.3.2-26.FC6
 - fix bugs 191093, 189789
 - backport selected fixes from upstream bind9 'v9_3_3b1' CVS version:
-  ( see http://www.isc.org/sw/bind9.3.php "Fixes" ): 
+  ( see http://www.isc.org/sw/bind9.3.php "Fixes" ):
   o change 2024 / bug 16027:
     named emitted spurious "zone serial unchanged" messages on reload
   o change 2013 / bug 15941:
     handle unexpected TSIGs on unsigned AXFR/IXFR responses more gracefully
   o change 2009 / bug 15808: coverity fixes
-  o change 1997 / bug 15818: 
+  o change 1997 / bug 15818:
     named was failing to replace negative cache entries when a positive one
     for the type was learnt
   o change 1994 / bug 15694: OpenSSL 0.9.8 support
   o change 1991 / bug 15813:
     The configuration data, once read, should be treated as readonly.
-  o misc. validator fixes 
+  o misc. validator fixes
   o misc. resolver fixes
   o misc. dns fixes
   o misc. isc fixes
@@ -3049,7 +3141,7 @@ rm -rf ${RPM_BUILD_ROOT}
 - rebuild for new gcc, glibc-kernheaders
 
 * Tue Apr 04 2006 Jason Vas Dias <jvdias@redhat.com> - 30:9.3.2-20
-- fix resolver.c ncache_adderesult segfault reported in addenda to bug 173961 
+- fix resolver.c ncache_adderesult segfault reported in addenda to bug 173961
   (upstream bugs #15642, #15528 ?)
 - allow named ability to generate core dumps after setuid (upstream bug #15753)
 
@@ -3057,7 +3149,7 @@ rm -rf ${RPM_BUILD_ROOT}
 - fix bug 187529: make bind-chroot-admin deal with subdirectories properly
 
 * Thu Mar 30 2006 Jason Vas Dias <jvdias@redhat.com> - 30:9.3.2-16
-- fix bug 187286: 
+- fix bug 187286:
      prevent host(1) printing duplicate 'is an alias for' messages
      for the default AAAA and MX lookups as well as for the A lookup
      (it now uses the CNAME returned for the A lookup for the AAAA and MX lookups).

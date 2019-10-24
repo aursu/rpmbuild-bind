@@ -1,0 +1,39 @@
+From 66298a12b09784eab2c052ab22f87bb2b2f1267b Mon Sep 17 00:00:00 2001
+From: Petr Mensik <pemensik@redhat.com>
+Date: Fri, 1 Mar 2019 15:55:46 +0100
+Subject: [PATCH] Detect correctly pkcs11 support
+
+It fails now always, because oot builds are not supported by
+cleanpkcs11.sh.
+---
+ bin/tests/system/cleanpkcs11.sh | 2 +-
+ bin/tests/system/conf.sh.in     | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/bin/tests/system/cleanpkcs11.sh b/bin/tests/system/cleanpkcs11.sh
+index b974708..3bbef4c 100644
+--- a/bin/tests/system/cleanpkcs11.sh
++++ b/bin/tests/system/cleanpkcs11.sh
+@@ -12,6 +12,6 @@
+ SYSTEMTESTTOP=.
+ . $SYSTEMTESTTOP/conf.sh
+ 
+-if [ ! -x ../../pkcs11/pkcs11-destroy ]; then exit 1; fi
++if [ ! -x "$PK11DESTROY" ]; then exit 1; fi
+ 
+ $PK11DEL -w0 > /dev/null 2>&1
+diff --git a/bin/tests/system/conf.sh.in b/bin/tests/system/conf.sh.in
+index a446c18..ede1203 100644
+--- a/bin/tests/system/conf.sh.in
++++ b/bin/tests/system/conf.sh.in
+@@ -46,6 +46,7 @@ CHECKZONE=$TOP/bin/check/named-checkzone
+ CHECKCONF=$TOP/bin/check/named-checkconf
+ PK11GEN="$TOP/bin/pkcs11/pkcs11-keygen -q -s ${SLOT:-0} -p ${HSMPIN:-1234}"
+ PK11LIST="$TOP/bin/pkcs11/pkcs11-list -s ${SLOT:-0} -p ${HSMPIN:-1234}"
++PK11DESTROY=$TOP/bin/pkcs11/pkcs11-destroy
+ PK11DEL="$TOP/bin/pkcs11/pkcs11-destroy -s ${SLOT:-0} -p ${HSMPIN:-1234} -w 0"
+ JOURNALPRINT=$TOP/bin/tools/named-journalprint
+ VERIFY=$TOP/bin/dnssec/dnssec-verify
+-- 
+2.20.1
+

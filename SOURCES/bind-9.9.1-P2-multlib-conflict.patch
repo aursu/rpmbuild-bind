@@ -1,8 +1,8 @@
 diff --git a/config.h.in b/config.h.in
-index 0c340db..dbeecd7 100644
+index 4ecaa8f..2f65ccc 100644
 --- a/config.h.in
 +++ b/config.h.in
-@@ -520,7 +520,7 @@ int sigwait(const unsigned int *set, int *sig);
+@@ -600,7 +600,7 @@ int sigwait(const unsigned int *set, int *sig);
  #undef PREFER_GOSTASN1
  
  /* The size of `void *', as computed by sizeof. */
@@ -11,29 +11,11 @@ index 0c340db..dbeecd7 100644
  
  /* Define to 1 if you have the ANSI C header files. */
  #undef STDC_HEADERS
-diff --git a/configure.in b/configure.in
-index 6b875ba..c39477c 100644
---- a/configure.in
-+++ b/configure.in
-@@ -3065,8 +3065,11 @@ int getnameinfo(const struct sockaddr *, size_t, char *,
- 		size_t, char *, size_t, int);],
- [ return (0);],
- 	[AC_MSG_RESULT(size_t for buflen; int for flags)
--	 AC_DEFINE(IRS_GETNAMEINFO_SOCKLEN_T, size_t)
--	 AC_DEFINE(IRS_GETNAMEINFO_BUFLEN_T, size_t)
-+	# Changed to solve multilib conflict on Fedora
-+	# AC_DEFINE(IRS_GETNAMEINFO_SOCKLEN_T, size_t)
-+	# AC_DEFINE(IRS_GETNAMEINFO_BUFLEN_T, size_t)
-+	 AC_DEFINE(IRS_GETNAMEINFO_SOCKLEN_T, socklen_t)
-+	 AC_DEFINE(IRS_GETNAMEINFO_BUFLEN_T, socklen_t)
- 	 AC_DEFINE(IRS_GETNAMEINFO_FLAGS_T, int)],
- [AC_MSG_RESULT(not match any subspecies; assume standard definition)
- AC_DEFINE(IRS_GETNAMEINFO_SOCKLEN_T, socklen_t)
 diff --git a/isc-config.sh.in b/isc-config.sh.in
-index 04a9e5c..67400d8 100644
+index a8a0a89..b5e94ed 100644
 --- a/isc-config.sh.in
 +++ b/isc-config.sh.in
-@@ -21,7 +21,18 @@ prefix=@prefix@
+@@ -13,7 +13,18 @@ prefix=@prefix@
  exec_prefix=@exec_prefix@
  exec_prefix_set=
  includedir=@includedir@
@@ -53,7 +35,7 @@ index 04a9e5c..67400d8 100644
  
  usage()
  {
-@@ -140,6 +151,16 @@ if test x"$echo_libs" = x"true"; then
+@@ -132,6 +143,16 @@ if test x"$echo_libs" = x"true"; then
  	if test x"${exec_prefix_set}" = x"true"; then
  		libs="-L${exec_prefix}/lib"
  	else
