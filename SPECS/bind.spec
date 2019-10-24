@@ -52,7 +52,7 @@ Summary:  The Berkeley Internet Name Domain (BIND) DNS (Domain Name System) serv
 Name:     bind
 License:  MPLv2.0
 Version:  9.11.10
-Release:  1%{?PATCHVER:.%{PATCHVER}}%{?PREVER:.%{PREVER}}%{?dist}
+Release:  1%{?PATCHVER:.%{PATCHVER}}%{?PREVER:.%{PREVER}}%{?dist}.1
 Epoch:    32
 Url:      https://www.isc.org/downloads/bind/
 #
@@ -1472,7 +1472,7 @@ fi;
 
 
 %changelog
-* Tue Aug 27 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.10-1
+* Tue Aug 27 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.10-1.1
 - Update to 9.11.10
 
 * Fri Aug 09 2019 Petr Menšík <pemensik@redhat.com> - 32:9.11.9-3
