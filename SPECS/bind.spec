@@ -421,7 +421,7 @@ Dynamic Loadable Zones sqlite3 module for BIND server.
 %package -n python36-bind
 Summary:   A module allowing rndc commands to be sent from Python programs
 Requires:  bind-license = %{epoch}:%{version}-%{release}
-Requires:  %{?__python3} python36-ply %{py3_dist ply}
+Requires:  %{?__python3} python36-ply
 BuildArch: noarch
 %{?python_provide:%python_provide python36-bind}
 %{?python_provide:%python_provide python36-isc}
